@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -10,11 +9,12 @@ import (
 	"log"
 	"io/ioutil"
 	"bitbucket.org/avcl/pik"
+	"bytes"
 )
 
 func upload(c echo.Context) error {
-	name := c.FormValue("name")
-	email := c.FormValue("email")
+	//name := c.FormValue("name")
+	//email := c.FormValue("email")
 
 	form, err := c.MultipartForm()
 	if err != nil {
@@ -40,11 +40,15 @@ func upload(c echo.Context) error {
 		}
 
 	}
-
-	return c.HTML(http.StatusOK, fmt.Sprintf("<p>Uploaded successfully %d files with fields name=%s and email=%s.</p>", len(files), name, email))
+	image_list := pickcl()
+	var str bytes.Buffer
+	for _, l := range image_list{
+		str.WriteString(l)
+	}
+	return c.HTML(http.StatusOK, string(str.String()))
 }
 
-func pickcl(c echo.Context) error{
+func pickcl() []string{
 	root := "./"
 	pf := photoFactory{}
 	contextId := pik.NewDesktopContext()
@@ -63,17 +67,17 @@ func pickcl(c echo.Context) error{
 		}
 	}
 	pik.StartSmartSelection(contextId)
-
+	image_list := []string{}
 	for _, f := range photos {
 		b, _ := pik.IsSelected(contextId, f.relativePath)
-		log.Println(f.relativePath, b)
 		//fix to display HTML Image with a star next to it after it is printable
 		if b {
-			return c.HTML(http.StatusOK, fmt.Sprintf("<p>Image with name=%s was selected by the selection.</p>", f.Name))
+			image_list = append(image_list, f.Name+"is_selected, ")
 		} else {
-			return c.HTML(http.StatusOK, fmt.Sprintf("<p>Image with name=%s was not selected by the selection.</p>", f.Name))
+			image_list = append(image_list, f.Name+"is_not_selected, ")
 		}
 	}
+	return image_list
 }
 
 func main() {
@@ -85,7 +89,8 @@ func main() {
 
 	e.Static("/", "public")
 	e.POST("/upload", upload)
-	e.POST("/upload", pickcl)
+
+	e.File("/", "public/index.html")
 
 	e.Logger.Fatal(e.Start(":1323"))
 }
